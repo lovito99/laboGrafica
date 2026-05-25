@@ -1,10 +1,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h> // Reemplaza a <GL/glut.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <string>
-#include <vector>
 
 // -------------------------------------------------------
 // Fuentes de los shaders (en crudo como cadenas)
@@ -32,6 +29,7 @@ void main() {
 // Variables globales
 // -------------------------------------------------------
 GLuint shaderProg, vao, vbo;
+constexpr GLsizei kVertexCount = 24;
 
 // Función auxiliar para revisar errores de compilación
 void chequearErroresShader(GLuint shader, std::string tipo) {
@@ -87,27 +85,40 @@ void matrizTraslacion(float tx, float ty, float M[9])
 }
 
 // -------------------------------------------------------
-// Inicializacion de VAO/VBO con los vertices de la linea
+// Inicializacion de VAO/VBO con los vertices de la letra E
 // -------------------------------------------------------
 void inicializarGeometria()
 {
-    // Linea: extremo A = (-0.5, -0.2),  extremo B = (0.2, 0.4)
-    // Coordenadas normalizadas NDC [-1, 1]
+    // La letra E se construye con cuatro rectangulos: una barra vertical
+    // y tres barras horizontales. Cada rectangulo se divide en dos triangulos.
     float vertices[] = {
-        -0.5f, -0.2f,   // vértice 0 (inicio de linea)
-         0.2f,  0.4f    // vértice 1 (fin de linea)
+        // Barra vertical izquierda
+        -0.80f,  0.55f,  -0.60f,  0.55f,  -0.60f, -0.55f,
+        -0.80f,  0.55f,  -0.60f, -0.55f,  -0.80f, -0.55f,
+
+        // Barra superior
+        -0.60f,  0.55f,  -0.10f,  0.55f,  -0.10f,  0.35f,
+        -0.60f,  0.55f,  -0.10f,  0.35f,  -0.60f,  0.35f,
+
+        // Barra central
+        -0.60f,  0.10f,  -0.28f,  0.10f,  -0.28f, -0.10f,
+        -0.60f,  0.10f,  -0.28f, -0.10f,  -0.60f, -0.10f,
+
+        // Barra inferior
+        -0.60f, -0.35f,  -0.10f, -0.35f,  -0.10f, -0.55f,
+        -0.60f, -0.35f,  -0.10f, -0.55f,  -0.60f, -0.55f
     };
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
 
     glBindVertexArray(vao);
-      glBindBuffer(GL_ARRAY_BUFFER, vbo);
-      glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-      
-      // Atributo 0: vec2 aPos
-      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-      glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        // Atributo 0: vec2 aPos
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
     glBindVertexArray(0);
 }
 
@@ -169,20 +180,13 @@ int main()
 
         float M[9];
 
-        // --- Dibujar linea ORIGINAL (tx=0, ty=0) en rojo ---
-        matrizTraslacion(0.0f, 0.0f, M);
+        // Dibujar la letra E con la traslacion solicitada en la tarea.
+        matrizTraslacion(0.4f, -0.3f, M);
         glUniformMatrix3fv(locMat, 1, GL_FALSE, M);
-        glUniform4f(locColor, 1.0f, 0.0f, 0.0f, 1.0f); // RGBA rojo
+        glUniform4f(locColor, 0.72f, 0.72f, 0.72f, 1.0f);
         
         glBindVertexArray(vao);
-        glLineWidth(2.0f);
-        glDrawArrays(GL_LINES, 0, 2);
-
-        // --- Dibujar linea TRASLADADA (tx=0.3, ty=0.2) en azul ---
-        matrizTraslacion(0.3f, 0.2f, M);
-        glUniformMatrix3fv(locMat, 1, GL_FALSE, M);
-        glUniform4f(locColor, 0.0f, 0.2f, 0.9f, 1.0f); // RGBA azul
-        glDrawArrays(GL_LINES, 0, 2);
+        glDrawArrays(GL_TRIANGLES, 0, kVertexCount);
 
         glBindVertexArray(0);
 

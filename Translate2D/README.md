@@ -22,13 +22,34 @@ $$P_2 = P_1 + \mathbf{t} \quad\Longrightarrow\quad \begin{cases} x_2 = x_1 + t_x
 
 1. **Configurar el proyecto:**
    ```bash
-   mkdir build && cd build
+   cd Translate2D
+   mkdir -p build && cd build
    cmake ..
+   ```
 
 2. **Compilar:**
    ```bash
    cmake --build .
+   ```
  
 3. **Ejecutar:**
    ```bash
-   ./scanline
+   ./translate_app
+   ```
+
+Si estás ubicado en la raíz del workspace [laboGrafica](.), también puedes compilar así:
+
+```bash
+cmake -S Translate2D -B Translate2D/build
+cmake --build Translate2D/build
+./Translate2D/build/translate_app
+```
+
+Si por error ya entraste a [build](build) en la raíz del workspace, primero regresa un nivel:
+
+```bash
+cd ..
+cmake -S Translate2D -B Translate2D/build
+cmake --build Translate2D/build
+./Translate2D/build/translate_app
+```
