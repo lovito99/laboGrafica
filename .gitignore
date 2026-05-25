@@ -1,3 +1,14 @@
 # Artefactos de compilacion generados por CMake
 /build/
 /Translate2D/build/
+
+# Artefactos auxiliares de LaTeX
+/Translate2D/documentacion/*.aux
+/Translate2D/documentacion/*.log
+/Translate2D/documentacion/*.out
+/Translate2D/documentacion/*.toc
+/Translate2D/documentacion/*.lof
+/Translate2D/documentacion/*.lot
+/Translate2D/documentacion/*.fls
+/Translate2D/documentacion/*.fdb_latexmk
+/Translate2D/documentacion/*.synctex.gz

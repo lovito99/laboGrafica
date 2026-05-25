@@ -1,0 +1,241 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\geometry{margin=2.5cm}
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=black,
+	urlcolor=blue
+}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codecomment}{RGB}{0,120,0}
+\definecolor{codekeyword}{RGB}{0,0,150}
+
+\lstdefinestyle{cppstyle}{
+	language=C++,
+	backgroundcolor=\color{codebg},
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{codekeyword}\bfseries,
+	commentstyle=\color{codecomment},
+	stringstyle=\color{red!60!black},
+	numbers=left,
+	numberstyle=\tiny,
+	stepnumber=1,
+	numbersep=8pt,
+	showstringspaces=false,
+	breaklines=true,
+	frame=single,
+	tabsize=4,
+	captionpos=b
+}
+
+\begin{document}
+
+\pagenumbering{gobble}
+\hypersetup{pageanchor=false}
+
+\begin{titlepage}
+	\centering
+
+	{\large Universidad Nacional de San Antonio Abad del Cusco\par}
+	\vspace{0.4cm}
+	{\large Departamento Acad\'emico de Inform\'atica\par}
+	\vspace{0.4cm}
+	{\large Escuela Profesional: Ing. Inform\'atica y de Sistemas\par}
+	\vspace{0.4cm}
+	{\Large \textbf{COMPUTACION GR\'AFICA I}\par}
+	\vspace{1cm}
+	{\Large \textbf{Pr\'actica N\textdegree{} 06}\par}
+	\vspace{0.4cm}
+	{\LARGE \textbf{TRANSFORMACI\'ON 2D --- TRASLACI\'ON}}\par
+	\vspace{1cm}
+
+	\includegraphics[width=200pt,height=200pt,keepaspectratio]{images.jpeg}\par
+	\vspace{1cm}
+
+	\begin{flushleft}
+		\textbf{Estudiante:} Efrain Vitorino Marin\\
+		\textbf{C\'odigo de estudiante:} 160337\\
+		\textbf{Profesor:} Dr. Hans Harley Ccacyahuillca Bejar\\
+		\textbf{Fecha:} 11 de mayo de 2026
+	\end{flushleft}
+
+	\vfill
+\end{titlepage}
+
+\clearpage
+\hypersetup{pageanchor=true}
+\pagenumbering{arabic}
+
+\section{Introducci\'on}
+
+El presente informe describe la implementaci\'on de una transformaci\'on geom\'etrica de traslaci\'on en 2D usando C++ y OpenGL moderno. La figura utilizada en la escena es una letra E construida en la CPU mediante un arreglo de v\'ertices, enviada a la GPU por medio de un VBO y transformada en el \textit{vertex shader} con una matriz homog\'enea de orden $3 \times 3$.
+
+Aunque la car\'atula fue solicitada con el formato institucional indicado, el contenido t\'ecnico del documento corresponde al repositorio de la pr\'actica de traslaci\'on 2D disponible en:
+
+\href{https://github.com/lovito99/laboGrafica/tree/main/Translate2D}{https://github.com/lovito99/laboGrafica/tree/main/Translate2D}
+
+\section{Objetivo}
+
+Implementar una traslaci\'on bidimensional en el pipeline programable de OpenGL, representando una figura con forma de letra E, aplicando la transformaci\'on mediante shaders y verificando visualmente el desplazamiento solicitado.
+
+\section{Fundamento te\'orico}
+
+En coordenadas cartesianas, una traslaci\'on mueve cada punto de una figura una cantidad fija en los ejes $x$ e $y$. Si un punto inicial es $P = (x, y)$ y el vector de traslaci\'on es $\mathbf{t} = (t_x, t_y)$, entonces su nueva posici\'on es:
+
+\begin{equation}
+P' = (x + t_x, y + t_y)
+\end{equation}
+
+Para trabajar esta operaci\'on dentro del pipeline gr\'afico se emplean coordenadas homog\'eneas. La traslaci\'on en 2D se expresa con la matriz:
+
+\begin{equation}
+T(t_x, t_y) =
+\begin{bmatrix}
+1 & 0 & t_x \\
+0 & 1 & t_y \\
+0 & 0 & 1
+\end{bmatrix}
+\end{equation}
+
+La posici\'on transformada se obtiene mediante:
+
+\begin{equation}
+\begin{bmatrix}
+x' \\
+y' \\
+1
+\end{bmatrix}
+=
+\begin{bmatrix}
+1 & 0 & t_x \\
+0 & 1 & t_y \\
+0 & 0 & 1
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y \\
+1
+\end{bmatrix}
+=
+\begin{bmatrix}
+x + t_x \\
+y + t_y \\
+1
+\end{bmatrix}
+\end{equation}
+
+En esta implementaci\'on se utiliz\'o el vector de traslaci\'on $(t_x, t_y) = (0.4, -0.3)$.
+
+\section{Descripci\'on de la implementaci\'on}
+
+La aplicaci\'on se desarroll\'o en C++ usando GLFW para crear la ventana, GLEW para cargar funciones de OpenGL y shaders GLSL para ejecutar la transformaci\'on en la GPU. La letra E se model\'o como la uni\'on de cuatro rect\'angulos: una barra vertical y tres barras horizontales. Cada rect\'angulo fue descompuesto en dos tri\'angulos, obteniendo un total de 24 v\'ertices.
+
+\subsection{Definici\'on de la geometr\'ia}
+
+Los v\'ertices de la letra E se definen en la CPU mediante un arreglo lineal de tipo \texttt{float}. Este arreglo contiene las coordenadas normalizadas que luego son copiadas al VBO.
+
+\begin{lstlisting}[style=cppstyle,caption={Fragmento de definici\'on de v\'ertices de la letra E}]
+float vertices[] = {
+	// Barra vertical izquierda
+	-0.80f,  0.55f,  -0.60f,  0.55f,  -0.60f, -0.55f,
+	-0.80f,  0.55f,  -0.60f, -0.55f,  -0.80f, -0.55f,
+
+	// Barra superior
+	-0.60f,  0.55f,  -0.10f,  0.55f,  -0.10f,  0.35f,
+	-0.60f,  0.55f,  -0.10f,  0.35f,  -0.60f,  0.35f,
+
+	// Barra central
+	-0.60f,  0.10f,  -0.28f,  0.10f,  -0.28f, -0.10f,
+	-0.60f,  0.10f,  -0.28f, -0.10f,  -0.60f, -0.10f,
+
+	// Barra inferior
+	-0.60f, -0.35f,  -0.10f, -0.35f,  -0.10f, -0.55f,
+	-0.60f, -0.35f,  -0.10f, -0.55f,  -0.60f, -0.55f
+};
+\end{lstlisting}
+
+\subsection{Carga de datos al VBO}
+
+Una vez definidos los v\'ertices, la geometr\'ia se env\'ia a la GPU mediante un VAO y un VBO. El atributo de posici\'on se asocia al \texttt{location = 0} del \textit{vertex shader}.
+
+\begin{lstlisting}[style=cppstyle,caption={Configuraci\'on del VAO y VBO}]
+glGenVertexArrays(1, &vao);
+glGenBuffers(1, &vbo);
+
+glBindVertexArray(vao);
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+glBindVertexArray(0);
+\end{lstlisting}
+
+\subsection{Aplicaci\'on de la traslaci\'on}
+
+La matriz de traslaci\'on se construye en la CPU y se env\'ia como un \textit{uniform} de tipo \texttt{mat3}. Posteriormente, el \textit{vertex shader} multiplica esa matriz por cada v\'ertice expresado en coordenadas homog\'eneas.
+
+\begin{lstlisting}[style=cppstyle,caption={Construcci\'on de la matriz de traslaci\'on en C++}]
+void matrizTraslacion(float tx, float ty, float M[9])
+{
+	M[0] = 1; M[3] = 0; M[6] = tx;
+	M[1] = 0; M[4] = 1; M[7] = ty;
+	M[2] = 0; M[5] = 0; M[8] = 1;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle,caption={Vertex shader que aplica la traslaci\'on}]
+#version 330 core
+layout(location = 0) in vec2 aPos;
+uniform mat3 uTranslation;
+
+void main() {
+	vec3 p = uTranslation * vec3(aPos, 1.0);
+	gl_Position = vec4(p.xy, 0.0, 1.0);
+}
+\end{lstlisting}
+
+Durante el renderizado, la traslaci\'on usada en la escena es la solicitada por la pr\'actica:
+
+\begin{lstlisting}[style=cppstyle,caption={Aplicaci\'on de la traslaci\'on en el ciclo de renderizado}]
+float M[9];
+matrizTraslacion(0.4f, -0.3f, M);
+glUniformMatrix3fv(locMat, 1, GL_FALSE, M);
+glDrawArrays(GL_TRIANGLES, 0, kVertexCount);
+\end{lstlisting}
+
+\section{Resultado obtenido}
+
+La Figura \ref{fig:resultado} muestra el resultado de la ejecuci\'on del programa. Se observa la letra E renderizada y desplazada respecto a su posici\'on original de definici\'on, cumpliendo con la traslaci\'on especificada.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.82\textwidth]{image.png}
+	\caption{Resultado de la implementaci\'on de la traslaci\'on 2D de la letra E.}
+	\label{fig:resultado}
+\end{figure}
+
+\section{Conclusiones}
+
+La implementaci\'on desarrollada demuestra que una traslaci\'on 2D puede integrarse de forma clara dentro del pipeline moderno de OpenGL mediante shaders. La definici\'on de la geometr\'ia en la CPU y su posterior procesamiento en la GPU permite separar la construcci\'on de la figura del proceso de transformaci\'on.
+
+El uso de coordenadas homog\'eneas y matrices de $3 \times 3$ facilita la representaci\'on matem\'atica de la traslaci\'on. Adem\'as, la figura en forma de letra E evidencia visualmente el desplazamiento aplicado con los par\'ametros requeridos, confirmando el correcto funcionamiento de la implementaci\'on.
+
+\end{document}
