@@ -1,0 +1,3 @@
+/home/manjaro/Documents/CG1/Translate2D/build/CMakeFiles/translate_app.dir
+/home/manjaro/Documents/CG1/Translate2D/build/CMakeFiles/edit_cache.dir
+/home/manjaro/Documents/CG1/Translate2D/build/CMakeFiles/rebuild_cache.dir
