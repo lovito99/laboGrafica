@@ -1,0 +1,3 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/Translate2D/build/CMakeFiles/translate_app.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/Translate2D/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/Translate2D/build/CMakeFiles/rebuild_cache.dir
