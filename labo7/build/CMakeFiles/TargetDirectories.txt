@@ -1,0 +1,6 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/escalamiento.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/rotacion.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/actividadCirculo.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/actividadRectangulo.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo7/build/CMakeFiles/rebuild_cache.dir
