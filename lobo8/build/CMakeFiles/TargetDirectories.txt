@@ -1,0 +1,5 @@
+/mnt/d/GitHub/laboGrafica/lobo8/build/CMakeFiles/reflexion.dir
+/mnt/d/GitHub/laboGrafica/lobo8/build/CMakeFiles/actividadPentagono.dir
+/mnt/d/GitHub/laboGrafica/lobo8/build/CMakeFiles/actividadTriangulo.dir
+/mnt/d/GitHub/laboGrafica/lobo8/build/CMakeFiles/edit_cache.dir
+/mnt/d/GitHub/laboGrafica/lobo8/build/CMakeFiles/rebuild_cache.dir
