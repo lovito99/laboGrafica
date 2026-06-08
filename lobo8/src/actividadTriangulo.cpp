@@ -21,10 +21,8 @@
 //      | 0  0  0  1 |
 // ============================================================
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "gl_common.hpp"
 #include <iostream>
-#include <cmath>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -53,84 +51,6 @@ void main () {
 }
 )";
 
-// -------------------------------------------------------
-//  Compilar shaders
-// -------------------------------------------------------
-GLuint compilarShaders()
-{
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vertSrc, nullptr);
-    glCompileShader(vs);
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fragSrc, nullptr);
-    glCompileShader(fs);
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return prog;
-}
-
-// -------------------------------------------------------
-//  Funciones matematicas del PDF (exactas)
-// -------------------------------------------------------
-
-void createIdentityMatrix ( float * mat) {
-    for (int i = 0; i < 16; ++i) { mat[i] = 0.0f; }
-    mat [0]  = 1.0f;
-    mat [5]  = 1.0f;
-    mat [10] = 1.0f;
-    mat [15] = 1.0f;
-}
-
-void createScaleMatrix ( float * mat , float sx , float sy) {
-    createIdentityMatrix (mat);
-    mat [0] = sx;
-    mat [5] = sy;
-}
-
-void multiplyMatrices ( const float * a, const float * b, float * result ) {
-    for (int col = 0; col < 4; ++ col) {
-        for (int row = 0; row < 4; ++ row) {
-            result [col * 4 + row] =
-                a[0 * 4 + row] * b[col * 4 + 0] +
-                a[1 * 4 + row] * b[col * 4 + 1] +
-                a[2 * 4 + row] * b[col * 4 + 2] +
-                a[3 * 4 + row] * b[col * 4 + 3];
-        }
-    }
-}
-
-// -------------------------------------------------------
-//  Reflexion general respecto a la linea Y = tan(theta)*X
-//
-//  Construida con las funciones del PDF:
-//    Rot(-theta) * ScaleMatrix(1,-1) * Rot(theta)
-//
-//  La matriz rotation 2D se construye manualmente:
-//    | cos(t) -sin(t)  0  0 |
-//    | sin(t)  cos(t)  0  0 |
-//    | 0       0       1  0 |
-//    | 0       0       0  1 |
-// -------------------------------------------------------
-void createRotationMatrix(float* mat, float theta)
-{
-    createIdentityMatrix(mat);
-    float c = cosf(theta);
-    float s = sinf(theta);
-    // column-major: mat[col*4 + row]
-    mat[0] =  c;  // col0, row0
-    mat[1] =  s;  // col0, row1
-    mat[4] = -s;  // col1, row0
-    mat[5] =  c;  // col1, row1
-}
-
-// Reflexion general: R(theta) * Ref_X * R(-theta)
 void reflexionGeneral(float* result, float theta)
 {
     float Rpos[16], RefX[16], Rneg[16], tmp[16];
@@ -175,6 +95,7 @@ void inicializarGeometria()
 // -------------------------------------------------------
 int main()
 {
+    configureGlfwForX11();
     if (!glfwInit()) {
         std::cerr << "Error al inicializar GLFW" << std::endl;
         return -1;
@@ -201,7 +122,7 @@ int main()
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    shaderProgram = compilarShaders();
+    shaderProgram = compileShaderProgram(vertSrc, fragSrc);
     inicializarGeometria();
 
     unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");

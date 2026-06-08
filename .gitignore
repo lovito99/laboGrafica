@@ -12,3 +12,19 @@
 /Translate2D/documentacion/*.fls
 /Translate2D/documentacion/*.fdb_latexmk
 /Translate2D/documentacion/*.synctex.gz
+
+# Artefactos generados por el informe de lobo8
+/lobo8/build/
+/lobo8/infome/informe.pdf
+/lobo8/infome/*.aux
+/lobo8/infome/*.log
+/lobo8/infome/*.out
+/lobo8/infome/*.toc
+/lobo8/infome/*.lof
+/lobo8/infome/*.lot
+/lobo8/infome/*.fls
+/lobo8/infome/*.fdb_latexmk
+/lobo8/infome/*.synctex.gz
+
+# Log temporal generado en la raiz cuando falla pdflatex
+/texput.log

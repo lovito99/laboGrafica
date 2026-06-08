@@ -9,10 +9,8 @@
 //    createScaleMatrix(mat, 1.0f, -1.0f)  →  Reflexion eje X
 // ============================================================
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "gl_common.hpp"
 #include <iostream>
-#include <cmath>
 
 // -------------------------------------------------------
 //  Shaders (identicos al PDF)
@@ -36,59 +34,6 @@ void main () {
     FragColor = vec4 ( objectColor , 1.0) ;
 }
 )";
-
-// -------------------------------------------------------
-//  Compilar shaders
-// -------------------------------------------------------
-GLuint compilarShaders()
-{
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vertSrc, nullptr);
-    glCompileShader(vs);
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fragSrc, nullptr);
-    glCompileShader(fs);
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return prog;
-}
-
-// -------------------------------------------------------
-//  Funciones matematicas del PDF (exactas)
-// -------------------------------------------------------
-
-void createIdentityMatrix ( float * mat) {
-    for (int i = 0; i < 16; ++i) { mat[i] = 0.0f; }
-    mat [0]  = 1.0f;
-    mat [5]  = 1.0f;
-    mat [10] = 1.0f;
-    mat [15] = 1.0f;
-}
-
-void createScaleMatrix ( float * mat , float sx , float sy) {
-    createIdentityMatrix (mat);
-    mat [0] = sx;
-    mat [5] = sy;
-}
-
-void multiplyMatrices ( const float * a, const float * b, float * result ) {
-    for (int col = 0; col < 4; ++ col) {
-        for (int row = 0; row < 4; ++ row) {
-            result [col * 4 + row] =
-                a[0 * 4 + row] * b[col * 4 + 0] +
-                a[1 * 4 + row] * b[col * 4 + 1] +
-                a[2 * 4 + row] * b[col * 4 + 2] +
-                a[3 * 4 + row] * b[col * 4 + 3];
-        }
-    }
-}
 
 // -------------------------------------------------------
 //  VAO / VBO  – pentagono regular de 5 lados
@@ -125,6 +70,7 @@ void inicializarGeometria()
 // -------------------------------------------------------
 int main()
 {
+    configureGlfwForX11();
     if (!glfwInit()) {
         std::cerr << "Error al inicializar GLFW" << std::endl;
         return -1;
@@ -151,7 +97,7 @@ int main()
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    shaderProgram = compilarShaders();
+    shaderProgram = compileShaderProgram(vertSrc, fragSrc);
     inicializarGeometria();
 
     unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");

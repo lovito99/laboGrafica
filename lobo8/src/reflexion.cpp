@@ -6,8 +6,7 @@
 //  (Modern OpenGL: Vertex Shader y Fragment Shader)
 // ============================================================
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "gl_common.hpp"
 #include <iostream>
 
 // -------------------------------------------------------
@@ -36,72 +35,6 @@ void main () {
     FragColor = vec4 ( objectColor , 1.0) ;
 }
 )";
-
-// -------------------------------------------------------
-//  Compilar y enlazar shaders
-// -------------------------------------------------------
-GLuint compilarShaders()
-{
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vertSrc, nullptr);
-    glCompileShader(vs);
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fragSrc, nullptr);
-    glCompileShader(fs);
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return prog;
-}
-
-// -------------------------------------------------------
-//  Seccion 3.2 - Funciones matematicas manuales
-//               (Orden Column-Major) - del PDF
-// -------------------------------------------------------
-
-// Inicializa una matriz como matriz Identidad
-void createIdentityMatrix ( float * mat) {
-    for (int i = 0; i < 16; ++i) {
-        mat[i] = 0.0f;
-    }
-    mat [0]  = 1.0f; // Columna 0, Fila 0
-    mat [5]  = 1.0f; // Columna 1, Fila 1
-    mat [10] = 1.0f; // Columna 2, Fila 2
-    mat [15] = 1.0f; // Columna 3, Fila 3
-}
-
-// Crea una matriz de traslacion 2D
-void createTranslationMatrix ( float * mat , float tx , float ty) {
-    createIdentityMatrix (mat);
-    mat [12] = tx; // Columna 3, Fila 0
-    mat [13] = ty; // Columna 3, Fila 1
-}
-
-// Crea una matriz de escalamiento 2D
-void createScaleMatrix ( float * mat , float sx , float sy) {
-    createIdentityMatrix (mat);
-    mat [0] = sx; // Columna 0, Fila 0
-    mat [5] = sy; // Columna 1, Fila 1
-}
-
-// Multiplica dos matrices 4x4 (A * B) y guarda el resultado en 'result'
-void multiplyMatrices ( const float * a, const float * b, float * result ) {
-    for (int col = 0; col < 4; ++ col) {
-        for (int row = 0; row < 4; ++ row) {
-            result [col * 4 + row] =
-                a[0 * 4 + row] * b[col * 4 + 0] +
-                a[1 * 4 + row] * b[col * 4 + 1] +
-                a[2 * 4 + row] * b[col * 4 + 2] +
-                a[3 * 4 + row] * b[col * 4 + 3];
-        }
-    }
-}
 
 // -------------------------------------------------------
 //  Logica de transformaciones (del PDF, Seccion 3.2)
@@ -193,7 +126,7 @@ void inicializarGeometria()
 // -------------------------------------------------------
 int main()
 {
-    // Inicializar GLFW
+    configureGlfwForX11();
     if (!glfwInit()) {
         std::cerr << "Error al inicializar GLFW" << std::endl;
         return -1;
@@ -202,7 +135,7 @@ int main()
     // Configurar OpenGL 3.3 Core Profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
     // Crear ventana
     GLFWwindow* window = glfwCreateWindow(700, 700,
@@ -214,7 +147,6 @@ int main()
     }
     glfwMakeContextCurrent(window);
 
-    // Inicializar GLEW
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         std::cerr << "Error al inicializar GLEW" << std::endl;
@@ -223,8 +155,7 @@ int main()
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    // Compilar shaders y preparar geometria
-    shaderProgram = compilarShaders();
+    shaderProgram = compileShaderProgram(vertSrc, fragSrc);
     inicializarGeometria();
 
     // Uniform de color: blanco para todos los dibujos
