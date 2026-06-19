@@ -1,0 +1,196 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+
+\geometry{margin=2.5cm}
+\linespread{1.15}
+\setlength{\headheight}{14.5pt}
+\setlength{\emergencystretch}{2em}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{210,210,210}
+\definecolor{unsaacblue}{RGB}{31,82,150}
+
+\lstdefinestyle{cxx}{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Pr\'actica 09}
+\lhead{Transformaci\'on 2D: Shearing}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+	\centering
+	\includegraphics[width=3.2cm]{logo_unsaac.jpeg}\par
+	\vspace{0.8cm}
+	{\Large \textbf{UNIVERSIDAD NACIONAL DE SAN ANTONIO ABAD DEL CUSCO}}\\[0.2cm]
+	{\large Departamento Acad\'emico de Inform\'atica}\\[0.1cm]
+	{\large Escuela Profesional: Ing. Inform\'atica y de Sistemas}\\[1.3cm]
+
+	{\Large \textbf{COMPUTACI\'ON GR\'AFICA I}}\\[0.4cm]
+	{\Large \textbf{Pr\'actica N$^{\circ}$09}}\\[0.25cm]
+	{\LARGE \textbf{TRANSFORMACI\'ON 2D: SHEARING}}\\[1.4cm]
+
+	\begin{flushleft}
+	\textbf{Estudiante:} Efrain Vitorino Marin\\
+	\textbf{C\'odigo:} 160337\\
+	\textbf{Profesor:} Dr. Hans Harley Ccacyahuillca Bejar\\
+	\textbf{Repositorio:} \texttt{https://github.com/lovito99/laboGrafica/tree/main/labo9}\\
+	\end{flushleft}
+
+	\vfill
+	{\large Cusco -- Per\'u\\2026}
+\end{titlepage}
+
+\section*{Resumen}
+En esta pr\'actica se implement\'o la transformaci\'on de deformaci\'on o \textit{shearing} en OpenGL moderno. La tarea propuesta consiste en construir una letra ``E'' mediante 12 puntos y aplicar los factores de deformaci\'on $shx=2$ y $shy=3$, enviando la matriz de transformaci\'on como uniforme al \textit{vertex shader}.
+
+\section*{Objetivos}
+\begin{itemize}
+	\item Comprender la deformaci\'on geom\'etrica 2D respecto a los ejes $X$ e $Y$.
+	\item Representar una figura compuesta mediante vertices e indices en OpenGL moderno.
+	\item Aplicar la matriz de shearing con $shx=2$ y $shy=3$.
+	\item Renderizar la figura con triangulaci\'on manual usando \texttt{GL\_TRIANGLES}.
+\end{itemize}
+
+\section*{Base te\'orica}
+La deformaci\'on en 2D modifica una coordenada en funci\'on de la otra. Para aplicar deformaci\'on simult\'anea en ambos ejes se usan las ecuaciones:
+
+\[
+x' = x + shx \cdot y
+\]
+
+\[
+y' = shy \cdot x + y
+\]
+
+En forma matricial:
+
+\[
+\begin{pmatrix}
+x'\\
+y'
+\end{pmatrix}
+=
+\begin{pmatrix}
+1 & shx\\
+shy & 1
+\end{pmatrix}
+\begin{pmatrix}
+x\\
+y
+\end{pmatrix}
+\]
+
+Para la actividad se reemplazan los valores solicitados:
+
+\[
+M =
+\begin{pmatrix}
+1 & 2\\
+3 & 1
+\end{pmatrix}
+\]
+
+\section*{Figura geom\'etrica}
+La letra ``E'' fue modelada como un pol\'igono ortogonal de 12 puntos. El recorrido inicia en la esquina inferior izquierda y avanza en sentido antihorario por el contorno de la figura.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.78\linewidth]{\detokenize{primer imagen.png}}
+	\caption{Letra ``E'' original construida con 12 vertices.}
+\end{figure}
+
+\section*{Implementaci\'on}
+El archivo principal de la tarea es \texttt{actividadLetraE.cpp}. La geometr\'ia define 12 vertices y dos grupos de indices: uno para rellenar la figura con triangulos y otro para dibujar el contorno.
+
+\begin{lstlisting}[style=cxx,caption={Vertices de la letra E.}]
+const float vertices[] = {
+    -0.45f, -0.50f, // 0
+     0.40f, -0.50f, // 1
+     0.40f, -0.30f, // 2
+    -0.15f, -0.30f, // 3
+    -0.15f, -0.10f, // 4
+     0.25f, -0.10f, // 5
+     0.25f,  0.10f, // 6
+    -0.15f,  0.10f, // 7
+    -0.15f,  0.30f, // 8
+     0.40f,  0.30f, // 9
+     0.40f,  0.50f, // 10
+    -0.45f,  0.50f  // 11
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxx,caption={Triangulacion manual de la figura.}]
+const unsigned int fillIndices[] = {
+    0, 1, 2,   0, 2, 3,
+    0, 3, 8,   0, 8, 11,
+    4, 5, 6,   4, 6, 7,
+    8, 9, 10,  8, 10, 11
+};
+\end{lstlisting}
+
+\section*{Matriz aplicada en OpenGL}
+OpenGL recibe las matrices en orden column-major. Por ello, para representar la matriz:
+
+\[
+\begin{pmatrix}
+1 & shx & 0 & 0\\
+shy & 1 & 0 & 0\\
+0 & 0 & 1 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+
+se asignan los factores de deformaci\'on de la siguiente manera:
+
+\begin{lstlisting}[style=cxx,caption={Construccion de la matriz de shearing.}]
+void createShearingMatrix(float* mat, float shx, float shy)
+{
+    createIdentityMatrix(mat);
+    mat[4] = shx;
+    mat[1] = shy;
+}
+\end{lstlisting}
+
+\section*{Resultado esperado}
+Al ejecutar \texttt{actividadLetraE}, la letra ``E'' se observa deformada por los factores $shx=2$ y $shy=3$. Para mantenerla visible en la ventana, se aplica una escala de visualizaci\'on despues de la deformaci\'on.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.78\linewidth]{\detokenize{segundo imagen.png}}
+	\caption{Letra ``E'' deformada con $shx=2$ y $shy=3$.}
+\end{figure}
+
+\section*{Conclusiones}
+\begin{itemize}
+	\item La deformaci\'on 2D se implement\'o correctamente mediante una matriz uniforme en el \textit{vertex shader}.
+	\item La letra ``E'' se represent\'o con 12 vertices, cumpliendo la indicaci\'on de la tarea.
+	\item La triangulaci\'on manual permiti\'o renderizar una figura solida y no solo su contorno.
+	\item El uso de indices separa de forma ordenada el relleno de la figura y el dibujo del borde.
+\end{itemize}
+
+\end{document}

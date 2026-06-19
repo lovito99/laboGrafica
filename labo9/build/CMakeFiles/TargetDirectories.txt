@@ -1,0 +1,4 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/labo9/build/CMakeFiles/shearing.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo9/build/CMakeFiles/actividadLetraE.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo9/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo9/build/CMakeFiles/rebuild_cache.dir
