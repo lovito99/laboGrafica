@@ -1,0 +1,5 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/labo11/build/CMakeFiles/actARefPlano.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo11/build/CMakeFiles/actBRefZ5.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo11/build/CMakeFiles/actCShearDyn.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo11/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo11/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,398 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{fancyhdr}
+
+\geometry{margin=2.5cm}
+\linespread{1.15}
+\setlength{\headheight}{14.5pt}
+\setlength{\emergencystretch}{2em}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{205,210,220}
+\definecolor{codekey}{RGB}{28,80,170}
+\definecolor{codecomment}{RGB}{34,125,72}
+\definecolor{codestring}{RGB}{170,55,45}
+\definecolor{codenum}{RGB}{120,120,120}
+\definecolor{unsaacblue}{RGB}{31,82,150}
+
+\lstdefinestyle{cxxcolor}{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  keywordstyle=\color{codekey}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{codestring},
+  numberstyle=\tiny\color{codenum},
+  numbers=left,
+  stepnumber=1,
+  numbersep=8pt,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Pr\'actica 11}
+\lhead{Transformaciones Avanzadas 3D}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+	\centering
+	\includegraphics[width=3.2cm]{\detokenize{../../logo_unsaac.jpeg}}\par
+	\vspace{0.8cm}
+	{\Large \textbf{UNIVERSIDAD NACIONAL DE SAN ANTONIO ABAD DEL CUSCO}}\\[0.2cm]
+	{\large Departamento Acad\'emico de Inform\'atica}\\[0.1cm]
+	{\large Escuela Profesional: Ing. Inform\'atica y de Sistemas}\\[1.3cm]
+
+	{\Large \textbf{COMPUTACI\'ON GR\'AFICA I}}\\[0.4cm]
+	{\Large \textbf{Pr\'actica N$^{\circ}$11}}\\[0.25cm]
+	{\LARGE \textbf{TRANSFORMACIONES AVANZADAS EN 3D}}\\[0.25cm]
+	{\Large \textbf{Reflexi\'on general y distorsi\'on din\'amica}}\\[1.2cm]
+
+	\begin{flushleft}
+	\textbf{Estudiante:} Efrain Vitorino Marin\\
+	\textbf{C\'odigo:} 160337\\
+	\textbf{Profesor:} Dr. Hans Harley Ccacyahuillca Bejar\\
+	\textbf{Repositorio:} \texttt{https://github.com/lovito99/laboGrafica/tree/main/labo11}\\
+	\end{flushleft}
+
+	\vfill
+	{\large Cusco -- Per\'u\\2026}
+\end{titlepage}
+
+\section*{Resumen}
+En esta pr\'actica se desarrollaron tres transformaciones avanzadas en el espacio tridimensional usando OpenGL moderno. Se implement\'o la reflexi\'on de una pir\'amide sobre el plano arbitrario $3x+5y+6z=0$, la reflexi\'on estricta sobre el plano infinito $Z=5$ y una distorsi\'on din\'amica cruzada aplicada sobre la pir\'amide reflejada.
+
+\section*{Objetivos}
+\begin{itemize}
+	\item Implementar reflexiones tridimensionales mediante matrices homog\'eneas de $4\times4$.
+	\item Aplicar una reflexi\'on general respecto a un plano arbitrario que pasa por el origen.
+	\item Deducir el t\'ermino de traslaci\'on para reflejar respecto al plano $Z=5$.
+	\item Construir una matriz de cizallamiento 3D con factores dependientes del tiempo.
+	\item Visualizar los resultados con OpenGL moderno, GLFW, GLEW y GLM.
+\end{itemize}
+
+\section*{Librer\'ias usadas}
+La implementaci\'on mantiene el estilo de la plantilla del PDF, usando OpenGL moderno, shaders y matrices enviadas como variables uniformes.
+
+\begin{lstlisting}[style=cxxcolor,caption={Librerias principales usadas.}]
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+\end{lstlisting}
+
+\section*{Shaders}
+El \textit{vertex shader} recibe la posici\'on de cada v\'ertice y aplica las matrices \texttt{projection}, \texttt{view} y \texttt{transformMatrix}. El \textit{fragment shader} colorea cada objeto mediante una variable uniforme.
+
+\begin{lstlisting}[style=cxxcolor,caption={Vertex shader usado en la practica.}]
+const char* const shaderVert = R"glsl(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+uniform mat4 transformMatrix;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main()
+{
+    gl_Position = projection * view * transformMatrix * vec4(aPos, 1.0);
+}
+)glsl";
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxxcolor,caption={Fragment shader usado para colorear la piramide y los ejes.}]
+const char* const shaderFrag = R"glsl(
+#version 330 core
+out vec4 FragColor;
+uniform vec3 objectColor;
+
+void main()
+{
+    FragColor = vec4(objectColor, 1.0);
+}
+)glsl";
+\end{lstlisting}
+
+\section*{Geometr\'ia de la escena}
+La escena contiene ejes coordenados y una pir\'amide definida con cuatro v\'ertices. La pir\'amide se dibuja mediante aristas para poder comparar con claridad la figura original y la figura transformada.
+
+\begin{lstlisting}[style=cxxcolor,caption={Vertices de la piramide usada en las tres actividades.}]
+const float pyramidVertices[] = {
+    40.0f, 20.0f, 40.0f,
+    60.0f, 30.0f, 20.0f,
+    40.0f, 50.0f, 30.0f,
+    20.0f, 30.0f, 20.0f
+};
+
+const unsigned int pyramidEdges[] = {
+    0, 1, 1, 2, 2, 0,
+    0, 3, 1, 3, 2, 3
+};
+\end{lstlisting}
+
+\section*{C\'amara y proyecci\'on}
+Para observar las transformaciones en 3D se usa una proyecci\'on ortogr\'afica y una c\'amara construida con \texttt{glm::lookAt}.
+
+\begin{lstlisting}[style=cxxcolor,caption={Envio de matrices de camara al shader.}]
+inline void sendCamera(GLuint program)
+{
+    const glm::mat4 projection = glm::ortho(
+        -120.0f, 120.0f,
+        -100.0f, 130.0f,
+        -250.0f, 250.0f);
+
+    const glm::mat4 view = glm::lookAt(
+        glm::vec3(95.0f, 80.0f, 145.0f),
+        glm::vec3(25.0f, 25.0f, 25.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glUniformMatrix4fv(glGetUniformLocation(program, "projection"),
+                       1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(program, "view"),
+                       1, GL_FALSE, glm::value_ptr(view));
+}
+\end{lstlisting}
+
+\section*{Actividad A: Reflexi\'on sobre $3x+5y+6z=0$}
+El plano pasa por el origen y su vector normal es:
+
+\[
+\vec{n}=(3,5,6)
+\]
+
+Para reflejar un punto $p$ respecto a un plano que pasa por el origen se usa:
+
+\[
+p' = p - 2\vec{n}\frac{\vec{n}\cdot p}{\vec{n}\cdot \vec{n}}
+\]
+
+En forma matricial:
+
+\[
+R = I - 2\frac{\vec{n}\vec{n}^{T}}{\vec{n}\cdot\vec{n}}
+\]
+
+Como:
+
+\[
+\vec{n}\cdot\vec{n}=3^2+5^2+6^2=70
+\]
+
+la matriz queda:
+
+\[
+R =
+\begin{pmatrix}
+1-\frac{18}{70} & -\frac{30}{70} & -\frac{36}{70} & 0\\
+-\frac{30}{70} & 1-\frac{50}{70} & -\frac{60}{70} & 0\\
+-\frac{36}{70} & -\frac{60}{70} & 1-\frac{72}{70} & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+
+\begin{lstlisting}[style=cxxcolor,caption={Construccion de la reflexion sobre un plano que pasa por el origen.}]
+inline void createReflectionPlaneThroughOrigin(float* mat, float a, float b, float c)
+{
+    createIdentityMatrix(mat);
+
+    const float denominator = a * a + b * b + c * c;
+    if (denominator == 0.0f) {
+        return;
+    }
+
+    const float n[3] = {a, b, c};
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            const float identity = row == col ? 1.0f : 0.0f;
+            mat[col * 4 + row] =
+                identity - (2.0f * n[row] * n[col]) / denominator;
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxxcolor,caption={Uso de la matriz en la actividad A.}]
+float identity[16];
+float reflection[16];
+createIdentityMatrix(identity);
+createReflectionPlaneThroughOrigin(reflection, 3.0f, 5.0f, 6.0f);
+
+drawPyramid(buffers, transformLoc, colorLoc, identity, 0.90f, 0.12f, 0.10f);
+drawPyramid(buffers, transformLoc, colorLoc, reflection, 0.05f, 0.52f, 0.85f);
+\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.86\linewidth]{\detokenize{../refliexion plano.png}}
+	\caption{Reflexi\'on de la pir\'amide sobre el plano $3x+5y+6z=0$.}
+\end{figure}
+
+\section*{Actividad B: Reflexi\'on estricta sobre $Z=5$}
+Para reflejar respecto al plano infinito $Z=5$, se traslada el plano hacia el origen, se refleja sobre $Z=0$ y se retorna a la posici\'on original:
+
+\[
+M = T(0,0,5)\,R_{xy}\,T(0,0,-5)
+\]
+
+La transformaci\'on resultante es:
+
+\[
+x'=x,\qquad y'=y,\qquad z'=10-z
+\]
+
+La matriz homog\'enea queda:
+
+\[
+M =
+\begin{pmatrix}
+1 & 0 & 0 & 0\\
+0 & 1 & 0 & 0\\
+0 & 0 & -1 & 10\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+
+El valor $10$ corresponde al t\'ermino de traslaci\'on acoplado $2\cdot5$.
+
+\begin{lstlisting}[style=cxxcolor,caption={Reflexion sobre el plano Z igual a una constante.}]
+inline void createReflectionZEquals(float* mat, float zPlane)
+{
+    createIdentityMatrix(mat);
+    mat[10] = -1.0f;
+    mat[14] = 2.0f * zPlane;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxxcolor,caption={Uso de la reflexion estricta sobre Z=5.}]
+float identity[16];
+float reflectionZ5[16];
+createIdentityMatrix(identity);
+createReflectionZEquals(reflectionZ5, 5.0f);
+
+drawPyramid(buffers, transformLoc, colorLoc, identity, 0.90f, 0.12f, 0.10f);
+drawPyramid(buffers, transformLoc, colorLoc, reflectionZ5, 0.06f, 0.58f, 0.20f);
+\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.86\linewidth]{\detokenize{../reflexion estricta.png}}
+	\caption{Reflexi\'on geom\'etrica estricta de la pir\'amide sobre el plano $Z=5$.}
+\end{figure}
+
+\section*{Actividad C: Distorsi\'on din\'amica cruzada}
+La actividad final aplica cizallamiento 3D sobre la pir\'amide reflejada. La matriz general usada es:
+
+\[
+Sh =
+\begin{pmatrix}
+1 & shxy & shxz & 0\\
+shyx & 1 & shyz & 0\\
+shzx & shzy & 1 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+
+En esta pr\'actica se solicita:
+
+\[
+shxy=\sin(t), \qquad shyz=\cos(t)
+\]
+
+Por tanto:
+
+\[
+x'=x+\sin(t)y
+\]
+
+\[
+y'=y+\cos(t)z
+\]
+
+\[
+z'=z
+\]
+
+\begin{lstlisting}[style=cxxcolor,caption={Construccion de matriz de shearing 3D.}]
+inline void createShearing3D(float* mat, float shxy, float shxz,
+                             float shyx, float shyz,
+                             float shzx, float shzy)
+{
+    createIdentityMatrix(mat);
+    mat[4] = shxy;
+    mat[8] = shxz;
+    mat[1] = shyx;
+    mat[9] = shyz;
+    mat[2] = shzx;
+    mat[6] = shzy;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxxcolor,caption={Distorsion dinamica aplicada sobre la piramide reflejada.}]
+const float time = static_cast<float>(glfwGetTime());
+float shear[16];
+float dynamicTransform[16];
+
+createShearing3D(
+    shear,
+    std::sin(time), 0.0f,
+    0.0f, std::cos(time),
+    0.0f, 0.0f);
+
+multiplyMatrices(shear, reflectionZ5, dynamicTransform);
+
+drawPyramid(buffers, transformLoc, colorLoc, identity, 0.72f, 0.72f, 0.72f);
+drawPyramid(buffers, transformLoc, colorLoc, reflectionZ5, 0.06f, 0.58f, 0.20f);
+drawPyramid(buffers, transformLoc, colorLoc, dynamicTransform, 0.88f, 0.28f, 0.06f);
+\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.86\linewidth]{\detokenize{../distorcion dinamica.png}}
+	\caption{Distorsi\'on din\'amica cruzada aplicada sobre la pir\'amide reflejada.}
+\end{figure}
+
+\section*{Compilaci\'on y ejecuci\'on}
+Los tres programas se compilan con CMake:
+
+\begin{lstlisting}[style=cxxcolor,caption={Comandos de compilacion.}]
+cd ~/Documentos/GitHub/laboGrafica/labo11
+mkdir -p build
+cd build
+cmake .. -G "Unix Makefiles"
+make
+\end{lstlisting}
+
+Luego se ejecutan:
+
+\begin{lstlisting}[style=cxxcolor,caption={Comandos de ejecucion.}]
+./actARefPlano
+./actBRefZ5
+./actCShearDyn
+\end{lstlisting}
+
+\section*{Conclusiones}
+\begin{itemize}
+	\item La reflexi\'on sobre el plano $3x+5y+6z=0$ se obtuvo con una matriz general basada en el vector normal del plano.
+	\item La reflexi\'on sobre $Z=5$ requiere incorporar el t\'ermino de traslaci\'on $10$ dentro de la matriz homog\'enea.
+	\item La distorsi\'on din\'amica cruzada se logr\'o modificando simult\'aneamente las componentes $X$ e $Y$ con factores dependientes del tiempo.
+	\item El uso de shaders y matrices uniformes permite separar la geometr\'ia original de las transformaciones aplicadas.
+\end{itemize}
+
+\end{document}
