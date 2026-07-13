@@ -1,0 +1,445 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{fancyhdr}
+
+\geometry{margin=2.5cm}
+\linespread{1.15}
+\setlength{\headheight}{14.5pt}
+\setlength{\emergencystretch}{2em}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{210,210,210}
+\definecolor{unsaacblue}{RGB}{31,82,150}
+
+\lstdefinestyle{cxx}{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Pr\'actica 10}
+\lhead{Transformaciones en el Espacio 3D}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+	\centering
+	\includegraphics[width=3.2cm]{\detokenize{../../logo_unsaac.jpeg}}\par
+	\vspace{0.8cm}
+	{\Large \textbf{UNIVERSIDAD NACIONAL DE SAN ANTONIO ABAD DEL CUSCO}}\\[0.2cm]
+	{\large Departamento Acad\'emico de Inform\'atica}\\[0.1cm]
+	{\large Escuela Profesional: Ing. Inform\'atica y de Sistemas}\\[1.3cm]
+
+	{\Large \textbf{COMPUTACI\'ON GR\'AFICA I}}\\[0.4cm]
+	{\Large \textbf{Pr\'actica N$^{\circ}$10}}\\[0.25cm]
+	{\LARGE \textbf{TRANSFORMACIONES EN EL ESPACIO 3D}}\\[0.25cm]
+	{\Large \textbf{Traslaci\'on, rotaci\'on y escalamiento}}\\[1.2cm]
+
+	\begin{flushleft}
+	\textbf{Estudiante:} Efrain Vitorino Marin\\
+	\textbf{C\'odigo:} 160337\\
+	\textbf{Profesor:} Dr. Hans Harley Ccacyahuillca Bejar\\
+	\textbf{Repositorio:} \texttt{https://github.com/lovito99/laboGrafica/tree/main/labo10}\\
+	\end{flushleft}
+
+	\vfill
+	{\large Cusco -- Per\'u\\2026}
+\end{titlepage}
+
+\section*{Resumen}
+En esta pr\'actica se implementaron transformaciones tridimensionales usando OpenGL moderno, GLFW, GLEW y GLM. La actividad consiste en rotar un cubo alrededor de la recta que pasa por $A=[0,0,0]$ y $B=[7,7,7]$, adem\'as de rotar un tetraedro alrededor de la recta definida por los puntos $P=[2,1,0]$ y $Q=[6,5,0]$.
+
+\section*{Objetivos}
+\begin{itemize}
+	\item Implementar transformaciones 3D mediante matrices homog\'eneas de $4\times4$.
+	\item Usar el esquema \texttt{model}, \texttt{view} y \texttt{projection} de OpenGL moderno.
+	\item Derivar y aplicar matrices de rotaci\'on alrededor de una l\'inea arbitraria.
+	\item Visualizar gr\'aficamente el objeto original y el objeto transformado.
+\end{itemize}
+
+\section*{Librer\'ias usadas}
+La implementaci\'on sigue la plantilla del PDF de la pr\'actica. Se usan GLFW para la ventana, GLEW para cargar extensiones de OpenGL y GLM para el manejo de vectores y matrices.
+
+\begin{lstlisting}[style=cxx,caption={Librerias principales usadas en la practica.}]
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+\end{lstlisting}
+
+\section*{Base te\'orica}
+Una rotaci\'on alrededor de una l\'inea arbitraria se puede construir trasladando la recta al origen, aplicando la rotaci\'on respecto a su vector director y retornando luego a la posici\'on inicial.
+
+Si la recta pasa por los puntos $A$ y $B$, su vector director unitario es:
+
+\[
+\vec{u}=\frac{B-A}{\|B-A\|}
+\]
+
+Para una recta que no necesariamente pasa por el origen, la matriz global es:
+
+\[
+M = T(A)\,R(\vec{u},\theta)\,T(-A)
+\]
+
+La matriz $R(\vec{u},\theta)$ se obtiene con la f\'ormula de Rodrigues. Si $\vec{u}=(x,y,z)$, $c=\cos\theta$, $s=\sin\theta$ y $k=1-c$, entonces:
+
+\[
+R =
+\begin{pmatrix}
+c+x^2k & xy k-zs & xz k+ys & 0\\
+yx k+zs & c+y^2k & yz k-xs & 0\\
+zx k-ys & zy k+xs & c+z^2k & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\]
+
+\section*{Actividad 1: Cubo rotado}
+El primer ejercicio solicita rotar un cubo $30^\circ$ alrededor de la l\'inea que pasa por:
+
+\[
+A=[0,0,0], \qquad B=[7,7,7]
+\]
+
+El vector director es:
+
+\[
+B-A=[7,7,7]
+\]
+
+Normalizando:
+
+\[
+\vec{u}=
+\left(
+\frac{1}{\sqrt{3}},
+\frac{1}{\sqrt{3}},
+\frac{1}{\sqrt{3}}
+\right)
+\]
+
+Como la recta pasa por el origen, la matriz de transformaci\'on no requiere traslaci\'on adicional:
+
+\[
+M=R(\vec{u},30^\circ)
+\]
+
+\begin{lstlisting}[style=cxx,caption={Construccion de la matriz para el cubo.}]
+const glm::vec3 a(0.0f, 0.0f, 0.0f);
+const glm::vec3 b(7.0f, 7.0f, 7.0f);
+const glm::mat4 rot = matRotLinea(a, b, glm::radians(30.0f));
+\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.86\linewidth]{\detokenize{../CUBO ROTADO.png}}
+	\caption{Cubo original y cubo rotado $30^\circ$ alrededor de la recta $A(0,0,0)$--$B(7,7,7)$.}
+\end{figure}
+
+\section*{Actividad 2: Tetraedro rotado}
+El segundo ejercicio solicita rotar un tetraedro $45^\circ$ alrededor de la l\'inea que pasa por:
+
+\[
+P=[2,1,0], \qquad Q=[6,5,0]
+\]
+
+El vector director es:
+
+\[
+Q-P=[4,4,0]
+\]
+
+Normalizando:
+
+\[
+\vec{u}=
+\left(
+\frac{1}{\sqrt{2}},
+\frac{1}{\sqrt{2}},
+0
+\right)
+\]
+
+Como la recta no pasa por el origen, se traslada el punto $P$ al origen, se aplica la rotaci\'on y luego se retorna:
+
+\[
+M = T(2,1,0)\,R(\vec{u},45^\circ)\,T(-2,-1,0)
+\]
+
+\begin{lstlisting}[style=cxx,caption={Construccion de la matriz para el tetraedro.}]
+const glm::vec3 p(2.0f, 1.0f, 0.0f);
+const glm::vec3 q(6.0f, 5.0f, 0.0f);
+const glm::mat4 rot = matRotLinea(p, q, glm::radians(45.0f));
+\end{lstlisting}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.86\linewidth]{\detokenize{../TETRAEDO-ROROTADO.png}}
+	\caption{Tetraedro original y tetraedro rotado $45^\circ$ alrededor de la recta $P(2,1,0)$--$Q(6,5,0)$.}
+\end{figure}
+
+\section*{Implementaci\'on}
+El archivo \texttt{p10base.hpp} centraliza los shaders, la configuraci\'on de OpenGL y las funciones matem\'aticas. Las actividades se implementan en \texttt{actCubo.cpp} y \texttt{actTetra.cpp}.
+
+\subsection*{Vertex Shader y Fragment Shader}
+El \textit{vertex shader} recibe la posici\'on y el color de cada v\'ertice. La posici\'on final se calcula multiplicando las matrices \texttt{projection}, \texttt{view} y \texttt{model}, como indica la plantilla del PDF.
+
+\begin{lstlisting}[style=cxx,caption={Vertex shader usado en la practica.}]
+const char* const shaderVert = R"glsl(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aColor;
+
+out vec3 vertexColor;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    vertexColor = aColor;
+}
+)glsl";
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxx,caption={Fragment shader usado para colorear cada cara.}]
+const char* const shaderFrag = R"glsl(
+#version 330 core
+in vec3 vertexColor;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(vertexColor, 1.0);
+}
+)glsl";
+\end{lstlisting}
+
+\subsection*{Configuraci\'on de ventana y contexto}
+La ventana se crea con OpenGL Core Profile 3.3. Tambi\'en se activa \texttt{GL\_DEPTH\_TEST} para que las figuras tridimensionales se dibujen respetando la profundidad.
+
+\begin{lstlisting}[style=cxx,caption={Creacion de ventana moderna con GLFW y GLEW.}]
+inline GLFWwindow* crearVent(const char* titulo)
+{
+    configGlfw();
+    if (!glfwInit()) {
+        std::cerr << "Error al iniciar GLFW" << std::endl;
+        return nullptr;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+    GLFWwindow* vent = glfwCreateWindow(ancho, alto, titulo, nullptr, nullptr);
+    if (!vent) {
+        glfwTerminate();
+        return nullptr;
+    }
+
+    glfwMakeContextCurrent(vent);
+    glViewport(0, 0, ancho, alto);
+
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        glfwDestroyWindow(vent);
+        glfwTerminate();
+        return nullptr;
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    return vent;
+}
+\end{lstlisting}
+
+\subsection*{Matriz de traslaci\'on y rotaci\'on}
+La traslaci\'on se construye manualmente como una matriz homog\'enea. Esto mantiene coherencia con el desarrollo te\'orico del PDF.
+
+\begin{lstlisting}[style=cxx,caption={Matriz de traslacion manual.}]
+inline glm::mat4 matTras(float tx, float ty, float tz)
+{
+    return glm::mat4(
+        glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+        glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+        glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+        glm::vec4(tx, ty, tz, 1.0f));
+}
+\end{lstlisting}
+
+La rotaci\'on alrededor de un eje arbitrario se implementa con la f\'ormula de Rodrigues. Primero se normaliza el eje y luego se colocan los coeficientes en una matriz compatible con GLM.
+
+\begin{lstlisting}[style=cxx,caption={Rotacion alrededor de un eje arbitrario.}]
+inline glm::mat4 matRotEje(glm::vec3 eje, float angRad)
+{
+    eje = glm::normalize(eje);
+
+    const float x = eje.x;
+    const float y = eje.y;
+    const float z = eje.z;
+    const float c = std::cos(angRad);
+    const float s = std::sin(angRad);
+    const float omc = 1.0f - c;
+
+    return glm::mat4(
+        glm::vec4(c + x * x * omc, y * x * omc + z * s, z * x * omc - y * s, 0.0f),
+        glm::vec4(x * y * omc - z * s, c + y * y * omc, z * y * omc + x * s, 0.0f),
+        glm::vec4(x * z * omc + y * s, y * z * omc - x * s, c + z * z * omc, 0.0f),
+        glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxx,caption={Funcion general para rotar alrededor de una linea.}]
+inline glm::mat4 matRotLinea(glm::vec3 a, glm::vec3 b, float angRad)
+{
+    const glm::vec3 eje = b - a;
+    return matTras(a.x, a.y, a.z)
+         * matRotEje(eje, angRad)
+         * matTras(-a.x, -a.y, -a.z);
+}
+\end{lstlisting}
+
+\subsection*{Creaci\'on de VAO, VBO y EBO}
+La geometr\'ia se envia a la GPU mediante un VAO, un VBO y un EBO. Cada v\'ertice contiene seis valores: tres para posici\'on y tres para color.
+
+\begin{lstlisting}[style=cxx,caption={Carga de vertices e indices en buffers de OpenGL.}]
+inline Malla crearMalla(const float* verts, GLsizeiptr tamVerts,
+                        const unsigned int* inds, GLsizeiptr tamInds,
+                        GLsizei cantInds)
+{
+    Malla malla;
+    malla.cant = cantInds;
+
+    glGenVertexArrays(1, &malla.vao);
+    glGenBuffers(1, &malla.vbo);
+    glGenBuffers(1, &malla.ebo);
+
+    glBindVertexArray(malla.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, malla.vbo);
+    glBufferData(GL_ARRAY_BUFFER, tamVerts, verts, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, malla.ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tamInds, inds, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+    return malla;
+}
+\end{lstlisting}
+
+\subsection*{Vista y proyecci\'on}
+La matriz \texttt{view} se obtiene con \texttt{glm::lookAt}. La matriz \texttt{projection} se construye mediante una perspectiva manual, siguiendo la idea del programa base del PDF.
+
+\begin{lstlisting}[style=cxx,caption={Envio de matrices view y projection al shader.}]
+inline void enviarCam(GLuint prog)
+{
+    const glm::mat4 view = glm::lookAt(
+        glm::vec3(10.0f, 9.0f, 18.0f),
+        glm::vec3(1.5f, 1.5f, 1.5f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    const float fov = glm::radians(45.0f);
+    const glm::mat4 projection = matPersp(
+        fov,
+        static_cast<float>(ancho) / static_cast<float>(alto),
+        0.1f,
+        100.0f);
+
+    glUniformMatrix4fv(glGetUniformLocation(prog, "view"),
+                       1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(prog, "projection"),
+                       1, GL_FALSE, glm::value_ptr(projection));
+}
+\end{lstlisting}
+
+\subsection*{Implementaci\'on del cubo}
+El cubo se define con ocho v\'ertices. Los \'indices forman las seis caras usando dos tri\'angulos por cara.
+
+\begin{lstlisting}[style=cxx,caption={Vertices principales del cubo con colores.}]
+const float verts[] = {
+    -1.0f, -1.0f, -1.0f, 0.90f, 0.15f, 0.12f,
+     1.0f, -1.0f, -1.0f, 0.12f, 0.55f, 0.95f,
+     1.0f,  1.0f, -1.0f, 0.20f, 0.80f, 0.25f,
+    -1.0f,  1.0f, -1.0f, 0.98f, 0.78f, 0.18f,
+    -1.0f, -1.0f,  1.0f, 0.65f, 0.25f, 0.86f,
+     1.0f, -1.0f,  1.0f, 0.10f, 0.75f, 0.72f,
+     1.0f,  1.0f,  1.0f, 0.94f, 0.38f, 0.12f,
+    -1.0f,  1.0f,  1.0f, 0.75f, 0.75f, 0.75f
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxx,caption={Indices del cubo: seis caras con dos triangulos por cara.}]
+const unsigned int inds[] = {
+    0, 1, 2, 0, 2, 3,
+    4, 5, 6, 4, 6, 7,
+    0, 4, 7, 0, 7, 3,
+    1, 5, 6, 1, 6, 2,
+    3, 2, 6, 3, 6, 7,
+    0, 1, 5, 0, 5, 4
+};
+\end{lstlisting}
+
+\subsection*{Implementaci\'on del tetraedro}
+El tetraedro se modela con cuatro v\'ertices y cuatro caras triangulares. La transformaci\'on se calcula a partir de los puntos $P$ y $Q$.
+
+\begin{lstlisting}[style=cxx,caption={Vertices e indices del tetraedro.}]
+const float verts[] = {
+    2.0f, 1.0f, 3.0f, 0.95f, 0.25f, 0.15f,
+    0.0f, 0.0f, 0.0f, 0.12f, 0.55f, 0.95f,
+    4.0f, 0.0f, 0.0f, 0.20f, 0.82f, 0.28f,
+    2.0f, 4.0f, 0.0f, 0.96f, 0.78f, 0.16f
+};
+
+const unsigned int inds[] = {
+    0, 1, 2,
+    0, 2, 3,
+    0, 3, 1,
+    1, 3, 2
+};
+\end{lstlisting}
+
+En el bucle de renderizado se dibuja primero la figura original en modo alambre y luego la figura transformada con caras coloreadas:
+
+\begin{lstlisting}[style=cxx,caption={Dibujo del objeto original y transformado.}]
+glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+dibujar(cubo, modelLoc, glm::mat4(1.0f), GL_TRIANGLES);
+
+glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+dibujar(cubo, modelLoc, rot, GL_TRIANGLES);
+\end{lstlisting}
+
+\section*{Conclusiones}
+\begin{itemize}
+	\item Se implement\'o correctamente la rotaci\'on 3D alrededor de l\'ineas arbitrarias.
+	\item La actividad del cubo se resolvi\'o usando el eje unitario $(1/\sqrt{3},1/\sqrt{3},1/\sqrt{3})$.
+	\item La actividad del tetraedro requiri\'o una composici\'on con traslaci\'on porque la recta no pasa por el origen.
+	\item El uso de GLM facilita la transferencia de matrices a los shaders mediante \texttt{glm::value\_ptr}.
+\end{itemize}
+
+\end{document}

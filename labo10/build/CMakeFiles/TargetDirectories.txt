@@ -1,0 +1,4 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/labo10/build/CMakeFiles/actCubo.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo10/build/CMakeFiles/actTetra.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo10/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo10/build/CMakeFiles/rebuild_cache.dir
