@@ -1,0 +1,4 @@
+/home/lovito99/Documentos/GitHub/laboGrafica/labo12/build/CMakeFiles/mainCurves.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo12/build/CMakeFiles/actividadBezierCompuesta.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo12/build/CMakeFiles/edit_cache.dir
+/home/lovito99/Documentos/GitHub/laboGrafica/labo12/build/CMakeFiles/rebuild_cache.dir

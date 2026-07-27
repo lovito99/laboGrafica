@@ -1,0 +1,191 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{geometry,graphicx,float,xcolor,amsmath,listings,fancyhdr,tikz}
+\usetikzlibrary{positioning}
+\geometry{margin=2.5cm}
+\linespread{1.12}
+\setlength{\headheight}{14.5pt}
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codekey}{RGB}{28,80,170}
+\definecolor{codecomment}{RGB}{34,125,72}
+\lstdefinestyle{cxx}{language=C++,basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},frame=single,numbers=left,
+  keywordstyle=\color{codekey}\bfseries,commentstyle=\color{codecomment}\itshape,
+  breaklines=true,showstringspaces=false,columns=fullflexible}
+\pagestyle{fancy}\fancyhf{}
+\lhead{Curvas Paramétricas en 3D}\rhead{Práctica 12}\cfoot{\thepage}
+
+\begin{document}
+\shorthandoff{<>}
+\begin{titlepage}
+\centering
+\IfFileExists{../../logo_unsaac.jpeg}{\includegraphics[width=3.2cm]{../../logo_unsaac.jpeg}\par}{}
+\vspace{.7cm}
+{\Large\bfseries UNIVERSIDAD NACIONAL DE SAN ANTONIO ABAD DEL CUSCO}\\[.25cm]
+{\large Departamento Académico de Ingeniería Informática y de Sistemas}\\[1.1cm]
+{\Large\bfseries COMPUTACIÓN GRÁFICA I}\\[.35cm]
+{\Large\bfseries Práctica N.º 12}\\[.25cm]
+{\LARGE\bfseries GENERACIÓN DE CURVAS PARAMÉTRICAS EN 3D}\\[.3cm]
+{\large Evaluación de curvas de Bézier cúbicas en el Vertex Shader}\\[1.2cm]
+\begin{flushleft}
+\textbf{Estudiante:} Efrain Vitorino Marin\\
+\textbf{Código:} 160337\\
+\textbf{Profesor:} Dr. Hans Harley Ccacyahuillca Bejar\\
+\textbf{Repositorio:} \texttt{github.com/lovito99/laboGrafica/tree/main/labo12}
+\end{flushleft}
+\vfill Cusco -- Perú\\2026
+\end{titlepage}
+
+\section*{Resumen}
+Se implementó la curva cúbica del código base y una curva compuesta de dos
+segmentos, evaluadas íntegramente por el \textit{vertex shader}. La CPU transfiere
+los puntos de control como \textit{uniforms} y duplica el dominio discreto
+$t\in[0,1]$ para ambos tramos. La unión satisface continuidad geométrica y
+diferencial $C^1$. Además, los extremos $A_0$ y $B_3$ pueden modificarse en los
+tres ejes mediante el teclado.
+
+\section{Objetivos}
+\begin{itemize}
+\item Evaluar en paralelo los polinomios de Bernstein en la GPU.
+\item Construir dos segmentos Bézier cúbicos con continuidad $C^1$ estricta.
+\item Actualizar puntos de control mediante variables uniformes.
+\item implementar interacción tridimensional independiente del framerate.
+\end{itemize}
+
+\section{Fundamento matemático del pipeline}
+Para cuatro puntos de control, la curva cúbica es
+\[
+C(t)=(1-t)^3P_0+3(1-t)^2tP_1+3(1-t)t^2P_2+t^3P_3,\quad 0\le t\le1.
+\]
+La CPU no calcula posiciones de la curva. El VBO contiene solamente 241
+escalares equidistantes $t_i=i/240$. El mismo VAO se dibuja dos veces: primero
+con los \textit{uniforms} $A_0,\ldots,A_3$ y luego con $B_0,\ldots,B_3$.
+Esta ``duplicación'' es modular: se reutiliza el dominio, pero cada llamada
+\texttt{glDrawArrays} recibe otro conjunto de puntos de control. Cada invocación
+del \textit{vertex shader} evalúa en paralelo un valor de $t$.
+
+\begin{lstlisting}[style=cxx,caption={Evaluación de Bernstein en el vertex shader.}]
+float t = aT, u = 1.0 - t;
+vec3 pos = (u*u*u)*P0 + (3.0*u*u*t)*P1
+         + (3.0*u*t*t)*P2 + (t*t*t)*P3;
+gl_Position = projection * view * model * vec4(pos, 1.0);
+\end{lstlisting}
+
+\subsection{Ejemplo base implementado}
+Se conservaron los tres componentes solicitados en el PDF:
+\texttt{curve.vert}, \texttt{curve.frag} y \texttt{mainCurves.cpp}. El ejemplo
+base emplea 200 subdivisiones, es decir, 201 muestras incluyendo los extremos.
+
+\begin{lstlisting}[style=cxx,caption={Inicialización semántica del atributo escalar \(t\).}]
+constexpr int segments = 200;
+std::vector<float> values(segments + 1);
+for (int i = 0; i <= segments; ++i)
+    values[i] = static_cast<float>(i) / segments;
+
+glBufferData(GL_ARRAY_BUFFER,
+             values.size() * sizeof(float),
+             values.data(), GL_STATIC_DRAW);
+glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE,
+                      sizeof(float), nullptr);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cxx,caption={Puntos de control del ejemplo base del PDF.}]
+const glm::vec3 p0(-10, -5, 0);
+const glm::vec3 p1( -5, 10, 5);
+const glm::vec3 p2(  5,-10,-5);
+const glm::vec3 p3( 10,  5, 0);
+\end{lstlisting}
+
+\begin{figure}[H]\centering
+\includegraphics[width=.82\linewidth]{../capturaCurvaBase.png}
+\caption{Ejemplo base: curva Bézier cúbica evaluada en el vertex shader;
+extremo inicial cian y extremo final magenta.}
+\end{figure}
+
+\section{Continuidad estricta en la unión}
+La continuidad $C^0$ exige que ambos segmentos compartan el punto de unión:
+\[
+B_0=A_3.
+\]
+Las derivadas de una Bézier cúbica en sus extremos son
+\[
+C_A'(1)=3(A_3-A_2),\qquad C_B'(0)=3(B_1-B_0).
+\]
+Al imponer
+\[
+B_1=A_3+(A_3-A_2)
+\]
+se obtiene $B_1-B_0=A_3-A_2$ y, por tanto,
+$C_A'(1)=C_B'(0)$. Coinciden posición, dirección y magnitud de la tangente;
+la unión es $C^1$, no solo visualmente suave.
+
+\begin{lstlisting}[style=cxx,caption={Restricción recalculada en cada cuadro.}]
+const glm::vec3 b0 = a3;
+const glm::vec3 b1 = a3 + (a3 - a2);
+\end{lstlisting}
+
+\section{Diagrama algorítmico}
+\begin{figure}[H]\centering
+\begin{tikzpicture}[node distance=8mm, every node/.style={draw,rounded corners,
+align=center,minimum width=5.6cm,minimum height=7mm},
+every path/.style={->,thick}]
+\node (i) {Inicializar GLFW, GLEW, shaders y VBO de $t$};
+\node (k) [below=of i] {Leer selección 1/2 y teclas X, Y, Z};
+\node (c) [below=of k] {Calcular $B_0=A_3$ y $B_1=A_3+(A_3-A_2)$};
+\node (a) [below=of c] {Enviar $A_i$ y dibujar segmento A};
+\node (b) [below=of a] {Enviar $B_i$ y dibujar segmento B};
+\node (r) [below=of b] {Intercambiar buffers y repetir};
+\draw (i)--(k);\draw(k)--(c);\draw(c)--(a);\draw(a)--(b);\draw(b)--(r);
+\draw (r.east) -- ++(1,0) |- (k.east);
+\end{tikzpicture}
+\caption{Flujo propio de la aplicación interactiva.}
+\end{figure}
+
+\section{Control dinámico 3D}
+Las teclas \texttt{1} y \texttt{2} seleccionan $A_0$ o $B_3$. Las flechas
+alteran $x$ e $y$, mientras \texttt{W}/\texttt{S} alteran $z$. El desplazamiento
+se multiplica por el tiempo entre cuadros para mantener una velocidad uniforme.
+Como los puntos se envían en cada iteración, la deformación aparece
+inmediatamente sin reconstruir el VBO.
+
+\section{Buenas prácticas}
+La creación de ventana, compilación, generación del dominio y dibujo están
+modularizados en \texttt{bezierComun.hpp}. Se comprueba la compilación y enlace
+de shaders, se eliminan VAO, VBO, programa y ventana, y se usa tamaño semántico
+\texttt{sizeof(float)}. El VBO es inmutable porque la interacción solo modifica
+\textit{uniforms}.
+
+\section{Resultados y verificación}
+Se verificó mediante compilación y ejecución que cada programa funciona con
+C++17 y OpenGL 3.3. La curva base
+presenta el degradado cian--magenta y rotación global. En la actividad, los dos
+tramos conservan un color común en la unión y no muestran quiebre al mover los
+extremos.
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}
+\node[inner sep=0] (img)
+  {\includegraphics[width=.88\linewidth]{../capturaBezierCompuesta.png}};
+\node[draw,fill=white,fill opacity=.88,text opacity=1] at ([xshift=1.2cm,yshift=-1.2cm]img.north west)
+  {Tramo \(B_0,B_1,B_2,B_3\)};
+\node[draw,fill=white,fill opacity=.88,text opacity=1] at ([xshift=-1.3cm,yshift=1.2cm]img.south east)
+  {Tramo \(A_0,A_1,A_2,A_3\)};
+\draw[->,very thick,yellow] ([xshift=-.8cm,yshift=-.25cm]img.center)
+  -- ([xshift=-1.7cm,yshift=-.25cm]img.center)
+  node[left,draw,fill=white,text=black] {Unión \(A_3=B_0\), \(C^1\)};
+\end{tikzpicture}
+\caption{Resultado ejecutado y etiquetado de la curva Bézier compuesta.}
+\end{figure}
+
+\section{Conclusiones}
+\begin{itemize}
+\item Enviar únicamente $t$ reduce el trabajo geométrico de la CPU y aprovecha
+la evaluación paralela del pipeline.
+\item Las ecuaciones de los puntos de control prueban formalmente la continuidad
+$C^1$ en la unión.
+\item Los \textit{uniforms} permiten deformación 3D en tiempo real sin transferir
+un nuevo conjunto de vértices.
+\end{itemize}
+\end{document}
